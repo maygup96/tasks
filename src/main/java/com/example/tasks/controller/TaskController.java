@@ -18,6 +18,7 @@ import com.example.tasks.dto.TaskCountResponse;
 import com.example.tasks.repository.GardeningRepository;
 import com.example.tasks.repository.LaundaryRepository;
 import com.example.tasks.repository.ReadingRepository;
+import com.example.tasks.repository.StatusDataRepository;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -34,6 +35,8 @@ public class TaskController {
     private final LaundaryRepository laundryRepository;
     private final ReadingRepository readingRepository;
     private final DataRepository dataRepository;
+    private final StatusDataRepository statusRespository;
+
 
     // Fixed thread pool limited to at most 2 concurrent execution loops
     private final ExecutorService threadPool = Executors.newFixedThreadPool(2);
@@ -41,12 +44,13 @@ public class TaskController {
 
     public TaskController(SqsClient sqsClient, GardeningRepository gardeningRepository,
             LaundaryRepository laundryRepository, ReadingRepository readingRepository,
-            DataRepository dataRepository) {
+            DataRepository dataRepository, StatusDataRepository statusRespository) {
 		this.sqsClient = sqsClient;
 		this.gardeningRepository = gardeningRepository;
 		this.laundryRepository = laundryRepository;
 		this.readingRepository = readingRepository;
 		this.dataRepository = dataRepository;
+		this.statusRespository = statusRespository;
 	}
 
     @GetMapping("/counts")
@@ -133,12 +137,13 @@ public class TaskController {
         StatusData trackingStatus = new StatusData();
         trackingStatus.setUser_name("SystemWorkerPool");
         trackingStatus.setStatus("DONE");
+        trackingStatus = statusRespository.save(trackingStatus);
 
         Data dataAuditLog = new Data();
         dataAuditLog.setTabName(targetTable);
         dataAuditLog.setCount((int)actualCalculatedCount);
         dataAuditLog.setStatus("DONE");
-
+        dataAuditLog.setParent_status(trackingStatus);
         dataRepository.save(dataAuditLog);
         System.out.println("Successfully calculated and set status to DONE for table: " + targetTable);
     }
